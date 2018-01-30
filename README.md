@@ -31,7 +31,7 @@ The input files for running Step 1 under option A are
 An example for running Step 1 under option A is shown below.
 
 ```
-python src/asite_lp_preprocess.py -m 20 -x 35 -g data_files/sacCer3/cds_info.tab -e data_files/sacCer3/sacCer3_R64-2-1_genome.fa -i  input.sam
+python src/asite_lp_preprocess.py -m 20 -x 35 -g data_files/sacCer3/CDS_info.tab -e data_files/sacCer3/sacCer3_R64-2-1_genome.fa -i  input.sam
 ```
 
 Additional input parameters are shown below
@@ -66,7 +66,7 @@ This option is preferable for complex genomes like mouse and human. The alignmen
 An example for running Step 1 under this option is shown below.
 
 ```
-python src/asite_lp_preprocess.py -g data_files/Mus_musculus/mm10_start_index.tab -e data_files/Mus_musculus/mm10_transcript.fa -a transcriptome -m 20 -x 35 -i input.sam
+python src/asite_lp_preprocess.py -g data_files/mm10/mm10_start_index.tab -e data_files/mm10/mm10_transcript.fa -a transcriptome -m 20 -x 35 -i input.sam
 ```
 
 ### Step 2:
