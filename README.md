@@ -69,4 +69,28 @@ An example for running Step 1 under this option is shown below.
 python src/asite_lp_preprocess.py -g data_files/Mus_musculus/mm10_start_index.tab -e data_files/Mus_musculus/mm10_transcript.fa -a transcriptome -m 20 -x 35 -i input.sam
 ```
 
-Currently writing...
+### Step 2:
+
+The Read count files created under the directory `output/ ` will be used as input for Step2 where we will run the Linear Programming algorithm to determine fragment size and frame specific offsets for A-site within the ribosome protected fragments. This step is general to any organism and depends on the output created from Step 1.  
+An example for running this step is shown below
+
+```
+time python src/asite_lp_run.py -i output/ -j output/Multiple_mapped_gene_read_counts_20_35.tab -m 20 -x 35
+```
+
+The parameters which can be given as an input to this step are
+-	-i: Input directory containing the read count files (Usually output/ directory from Step1)
+-	-j: Path to Multiple mapped read count files (Usually within the output/ directory from Step 1)
+-	-m: Minimum fragment length
+-	-x: Maximum fragment length
+-	-o: output directory
+-	-n: Threshold for average reads per codon for filtering genes(Default: 1 read per codon)
+-	-t: Threshold for assigning a unique offset (Default: 70%)
+-	-s: Threshold for secondary selection criteria (Deafult: 5). 5*R(1) < Average(R(2), R(3), R(4))
+-	-3:  If given ‘Yes’, reads are mapped according to 3’ end rather than 5’ end (Default)
+
+The output files created from Step 2 are
+
+-	Results_LP_algorithm.tab:  This file contains the optimum offset table for A-site positions within ribosome protected fragments according to fragment size and frame. This file also contains  percentage of genes for unique offsets and top two percentages for combinations having ambiguous offsets.  The file also contains number of genes and number of reads mapped to each fragment size and frame.
+-	 Percentage_of_genes.tab: This file contains the percentage of genes mapping to each offset between 0 and S which are multiple of 3. This information is written for each fragment length as well as for each frame within each fragment length.
+
