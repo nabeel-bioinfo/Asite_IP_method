@@ -3,15 +3,15 @@ The following text describes the process to run the Linear Programming method to
 
 The analysis is carried out in two steps. 
 
-Step 1: An alignment file is processed to create read count files according to fragment length. These files will be used in Step 2 to run the Linear Programming algorithm. Genes are selected based on filtering criteria specified by the user.
+**Step 1:** An alignment file is processed to create read count files according to fragment length. These files will be used in Step 2 to run the Linear Programming algorithm. Genes are selected based on filtering criteria specified by the user.
 
-Step 2: Using the read count files created in Step 1, Linear Programming algorithm is run and the output is a A-site offset table specific to fragment size and frame. 
+**Step 2:** Using the read count files created in Step 1, Linear Programming algorithm is run and the output is a A-site offset table specific to fragment size and frame. 
 
 ### Step 1:  
 There are two options to run Step 1 based on how the alignments have been made.
 
 ### Option A:  Alignment to genome
-  This option is preferable for smaller genomes (e.g. E.coli, S. cerevisiae)  with simple gene structures with fewer introns and isoforms.
+  This option is preferable for smaller genomes (e.g. *E.coli*, *S. cerevisiae*)  with simple gene structures with fewer introns and isoforms.
 
 The input files for running Step 1 under option A are
 -	SAM alignment file. A BAM file can also be given as input but it requires samtools to be installed for it to be converted to a SAM file.
@@ -91,6 +91,6 @@ The parameters which can be given as an input to this step are
 
 The output files created from Step 2 are
 
--	Results_LP_algorithm.tab:  This file contains the optimum offset table for A-site positions within ribosome protected fragments according to fragment size and frame. This file also contains  percentage of genes for unique offsets and top two percentages for combinations having ambiguous offsets.  The file also contains number of genes and number of reads mapped to each fragment size and frame.
--	 Percentage_of_genes.tab: This file contains the percentage of genes mapping to each offset between 0 and S which are multiple of 3. This information is written for each fragment length as well as for each frame within each fragment length.
+-	**Results_LP_algorithm.tab:**  This file contains the optimum offset table for A-site positions within ribosome protected fragments according to fragment size and frame. This file also contains  percentage of genes for unique offsets and top two percentages for combinations having ambiguous offsets.  The file also contains number of genes and number of reads mapped to each fragment size and frame.
+-	 **Percentage_of_genes.tab:** This file contains the percentage of genes mapping to each offset between 0 and S which are multiple of 3. This information is written for each fragment length as well as for each frame within each fragment length.
 
