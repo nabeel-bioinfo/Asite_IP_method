@@ -223,8 +223,8 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
     for fsize in filtered_cds_dict:
         for frame in xrange(3):
             for name in good_genes[fsize][frame]:
-                if name in ['YFR032C-A', 'YFR032C-B', 'YGL188C-A', 'YGL189C']:
-                    continue
+                # if name in ['YFR032C-A', 'YFR032C-B', 'YGL188C-A', 'YGL189C']:
+                #    continue
                 filtered_cds_dict[fsize][frame][name] = reads_dict[fsize][name]
 
             log_file.write(str(fsize) + '\t' + str(frame) + '\t' + str(len(filtered_cds_dict[fsize][frame])) + '\t' + str(len(good_genes_mul_map[fsize][frame])) + '\n')
