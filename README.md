@@ -17,13 +17,15 @@ The input files for running Step 1 under option A are
 -	SAM alignment file. A BAM file can also be given as input but it requires samtools to be installed for it to be converted to a SAM file.
 -	Genome fasta file.
 -	Annotation file in the following format
-  |Gene name	|Chromosome|	Strand|	CDS Length|	Number of CDS regions|	CDS Start 1| CDS End1  |CDS Start 2	|CDS End 2|
-|:------:|:---------:|:------:|:---------:|:------:||:---------:|:------:|:---------:|:------:|
-|	YAL008W|	chrI|	+|	597	|1|	136914|	137510| | |
-|	YBR255W|chrII|	+	|2085	|1|	724456|	726540| | |
-|	YJL142C|	chrX|	-	|393	|1|	147819|	148211| | |
-|	YFR045W|	chrVI	+	|930	|2|	241998|	242009|	242082|	242999|
-|	YBL087C|	chrII|	-|	414|	2|	59822|	60193|	60698|	60739|
+ 
+|Gene name	|Chromosome|	Strand|	CDS Length|	Number of CDS regions|	CDS Start 1| CDS End1  |CDS Start 2	|CDS End 2|
+|:------:|:---------:|:------:|:---------:|:------:|:---------:|:------:|:---------:|:------:|
+|	YAL008W |	chrI |	+ |	597	| 1 |	136914 | 137510 | | |
+|	YBR255W |chrII |	+	| 2085 | 1 |	724456 | 726540 | | |
+|	YJL142C |	chrX |	-	| 393	| 1 |	147819 | 148211 | | |
+|	YFR045W |	chrVI |	+	| 930	| 2 |	241998 | 242009 | 242082 | 242999 |
+|	YBL087C |	chrII|	- |	414 |	2 |	59822 |	60193 |	60698 |	60739 |
+
 - Alternatively, a GFF file can also be given as input for annotations but the script is optimized for processing only GFF files for E. coli and S. cerevisiae. Ensure that the GFF file of your organism is in the same format as GFF files for the above organisms.
 
 An example for running Step 1 under option A is shown below.
@@ -50,6 +52,7 @@ This option is preferable for complex genomes like mouse and human. The alignmen
 - SAM alignment file with reads mapping to gene transcripts. A BAM file can also be given as input but it requires samtools to be installed for it to be converted to a SAM file.
 - Fasta file containing the sequences of the transcripts.
 - Annotation file in the following format
+
 |Gene name	|Start index	|CDS Length|
 |:------:|:---------:|:------:|
 |uc008jxs.1	|79	|	1155|
