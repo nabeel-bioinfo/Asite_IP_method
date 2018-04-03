@@ -25,33 +25,12 @@ genetic_code = {'UUU': 'F', 'UCU': 'S', 'UAU': 'Y', 'UGU': 'C', 'UUC': 'F', 'UCC
 AMINO_ACIDS = ['A', 'R', 'D', 'N', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V', '*']
 
 
-def parse_read_counts(count_directory, frag_min, frag_max, three_prime=False):
-    if count_directory[-1] != '/':
-        count_directory += '/'
-
-    dict_reads = {}
-    for fsize in range(frag_min, frag_max + 1):
-        infile = open(count_directory + 'Read_counts_' + str(fsize) + '.tab', 'r')
-        if fsize not in dict_reads:
-            dict_reads[fsize] = {}
-        for line in infile:
-            fields = line.strip().split('\t')
-            gene = fields[0]
-            start_index = int(fields[1])
-            cds_length = int(fields[2])
-            reads = map(int, fields[3].split(','))
-            if not three_prime:
-                dict_reads[fsize][gene] = reads[abs(start_index + fsize):abs(start_index + fsize) + cds_length]
-            else:
-                dict_reads[fsize][gene] = reads[abs(start_index):abs(start_index) + cds_length + fsize]
-
-
 # Using cutoffs for all possible frag sizes
-def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, threshold=1, three_prime=False):
+def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, threshold=1, three_prime=False, filter_file='', include=True):
     if cds_folder[-1] != '/':
         cds_folder += '/'
 
-    # Parsing the cds file or loading it from the stored pickle dict
+    # Parsing the cds file and getting the length of each gene transcript
     dict_length = {}
     # get the read dict for every gene according to fragment size and at each gene position
     reads_dict = {}
@@ -93,6 +72,8 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
         sys.stdout.flush()
 
     print '\nParsed read counts for all fragment sizes '
+
+    log_file = open(output + 'select_genes.log', 'w')
     # Get the number of mul mapped reads to decide whether to delete the gene or not. If a gene has more than 0.1% of reads multiple mapped, we delete it
     mul_map_dict = {}
     mul_map_gene_reads = {}
@@ -115,7 +96,7 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
         for gene in mul_map_gene_reads:
             if mul_map_gene_reads[gene] > 0:
                 if gene not in total_reads:
-                    print gene + ' not in total reads. It must be overlapping gene'
+                    log_file.write(gene + ' not in total reads. It must be overlapping gene\n')
                     continue
                 else:
                     perc_mul_map = float(mul_map_gene_reads[gene]) * 100 / float(mul_map_gene_reads[gene] + total_reads[gene])
@@ -127,7 +108,22 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
     good_genes = {}
     good_genes_mul_map = {}
 
-    log_file = open(output + 'select_genes.log', 'w')
+    # If the LP algorithm has to be applied for a selected subset of genes, they must be loaded from a text file here. If include option is false, these genes will be excluded
+    if filter_file:
+        filter_genes = True
+        select_genes = []
+        with open(filter_file) as f:
+            for lines in f:
+                fields = lines.strip().split('\t')
+                gene = fields[0]
+                select_genes.append(gene)
+        if include:
+            print 'Using gene list from file ' + filter_file + ' to apply the LP algorithm only for these ' + str(len(select_genes))+' genes'
+        else:
+            print 'Excluding '+str(len(select_genes))+' genes from the application of LP algorithm as provided in the file '+filter_file
+    else:
+        filter_genes = False
+
     print 'Starting to select genes for each fragment size and frame'
     for fsize in range(frag_min, frag_max + 1):
         good_genes[fsize] = {}
@@ -136,6 +132,14 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
             good_genes[fsize][frame] = []
             good_genes_mul_map[fsize][frame] = []
         for gene_name, dict_reads in reads_dict[fsize].iteritems():
+            # If we want to exclude or include a set of genes
+            if filter_genes:
+                # If the include boolean is false, we will exclude the genes in the list select_genes
+                if not include and gene_name in select_genes:
+                    continue
+                # Include only those genes which  are in the list select_genes
+                elif include and gene_name not in select_genes:
+                    continue
             if gene_name not in dict_gene:
                 dict_gene[gene_name] = {}
                 for size in range(frag_min, frag_max + 1):
@@ -198,10 +202,6 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
                     else:
                         good_genes[fsize][frame].append(gene_name)
 
-    # for fsize in sorted(good_genes):
-    #     for frame in xrange(3):
-    #         print 'Good genes for frag size %d and frame %d is %d with avg reads per nt greater than %f reads' % (fsize, frame, len(good_genes[fsize][frame]), threshold)
-
     outfile = open(output + 'Sorted_genes_by_Avg_reads_frag_size.tab', 'w')
     for name in dict_gene:
         outfile.write(name)
@@ -213,7 +213,6 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
                 continue
         outfile.write('\n')
 
-    # final_list = open("Final_selected_genes.tab", "w")
     filtered_cds_dict = {}
     for i in range(frag_min, frag_max + 1):
         filtered_cds_dict[i] = {}
@@ -223,8 +222,6 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
     for fsize in filtered_cds_dict:
         for frame in xrange(3):
             for name in good_genes[fsize][frame]:
-                if name in ['YFR032C-A', 'YFR032C-B', 'YGL188C-A', 'YGL189C']:
-                    continue
                 filtered_cds_dict[fsize][frame][name] = reads_dict[fsize][name]
 
             log_file.write(str(fsize) + '\t' + str(frame) + '\t' + str(len(filtered_cds_dict[fsize][frame])) + '\t' + str(len(good_genes_mul_map[fsize][frame])) + '\n')
@@ -537,8 +534,8 @@ def asite_algorithm_improved_second_offset_correction(reads_dict, dict_len, frag
                 # When the threshold is crossed at an higher cutoff, we do a linear trend analysis to check whether the trend is significant
                 if trend_list[1] and trend_list[1][0] < offset_threshold and '/' not in dict_most_prob_offsets[fsize][frame]['off'] and 'NA' not in \
                         dict_most_prob_offsets[fsize][frame]['off']:
-                    print 'Doing Linear trend analysis for fsize ' + str(fsize) + ' and frame ' + str(frame) + ' for trends for offset ' + \
-                          str(dict_most_prob_offsets[fsize][frame]['off']) + ' with trends ' + str(trend_list)
+                    # print 'Doing Linear trend analysis for fsize ' + str(fsize) + ' and frame ' + str(frame) + ' for trends for offset ' + \
+                    #       str(dict_most_prob_offsets[fsize][frame]['off']) + ' with trends ' + str(trend_list)
                     b1, b0, r, pval, std_err = stat.linregress(trend_list[0], trend_list[1])
 
                     if pval > 0.05:
@@ -590,31 +587,6 @@ def asite_algorithm_improved_second_offset_correction(reads_dict, dict_len, frag
                         if off not in mega_sum_dict:
                             print str(off) + ' was not in mega_sum_dict so adding a empty directory for fsize ' + str(fsize) + ' and frame ' + str(frame)
                             mega_sum_dict[off] = [0]
-
-                        try:
-                            # the average of the bootstrapped distribution should be close to the original value
-                            avg = np.mean(mega_sum_dict[off])
-                        except TypeError:
-                            avg = 'TE'
-
-                    for off in range(0, fsize, 3):
-                        try:
-                            # The standard deviation of bootstrap distribution is the Standard error of mean of the original value
-                            se_mean = np.std(mega_sum_dict[off])
-                        except TypeError:
-                            se_mean = 'TE'
-
-                    for off in range(0, fsize, 3):
-                        try:
-                            low_ci = np.percentile(mega_sum_dict[off], 2.5)
-                        except TypeError:
-                            low_ci = 'TE'
-
-                    for off in range(0, fsize, 3):
-                        try:
-                            high_ci = np.percentile(mega_sum_dict[off], 97.5)
-                        except TypeError:
-                            high_ci = 'TE'
 
     """
     ***    WRITE THE RESULTS AND PLOT DISTRIBUTION OF OFFSETS ***
@@ -963,6 +935,12 @@ def parse_arguments():
     parser.add_option("-3", "--three-prime",
                       dest="three_prime",
                       help="Align reads by 3' end. Default(5' end)")
+    parser.add_option("-g", "--gene_list",
+                      dest="gene_list",
+                      help="A file containing a list of genes for which the algorithm needs to run OR the genes which need to be excluded from the analysis")
+    parser.add_option("-e", "--exclude",
+                      dest="exclude",
+                      help="A Boolean for whether to include(Default) or exclude the list of genes given in option g. If -e Yes, then we exclude these genes")
     (options, arg) = parser.parse_args()
     # if not options.inputPath:
     #     parser.error("Requires an input file, the path of this script. Run with --help for help.")
@@ -1019,9 +997,18 @@ if __name__ == "__main__":
         print 'Doing analysis for 3\' aligned reads'
     else:
         three_prime_end = False
+    if arguments.gene_list:
+        gene_file = arguments.gene_list
+    else:
+        gene_file = ''
+    if arguments.exclude == "Yes":
+        inc = False
+    else:
+        inc = True
+
     # Filter genes which have greater than threshold (default=1) reads per codon on average
     if not os.path.isfile(out+"Pickle_dicts/filtered_dict.p"):
-        filtered_genes, dataset_gene_len = select_high_cov_genes(input_file, input_file2, min_frag, max_frag, out, threshold_avg_reads, three_prime=three_prime_end)
+        filtered_genes, dataset_gene_len = select_high_cov_genes(input_file, input_file2, min_frag, max_frag, out, threshold_avg_reads, three_prime=three_prime_end, filter_file=gene_file, include=inc)
         print 'Parsed the CDS file'
         Pickle.dump(filtered_genes, open(out+"Pickle_dicts/filtered_dict.p", "wb"))
         Pickle.dump(dataset_gene_len, open(out+"Pickle_dicts/gene_len.p", "wb"))
@@ -1031,3 +1018,8 @@ if __name__ == "__main__":
         dataset_gene_len = Pickle.load(open(out+"Pickle_dicts/gene_len.p", "rb"))
     offset_dict = asite_algorithm_improved_second_offset_correction(filtered_genes, dataset_gene_len, min_frag, max_frag, out, off_correction_threshold=second_threshold,
                                                                     bootstrap=False, offset_threshold=threshold_cutoff, three_prime=three_prime_end)
+
+    # print '\nGenerating A-site profiles from CDS Read count files for yeast'
+    # generate_asite_profiles(min_frag, max_frag, offset_dict, out)
+    # print '\nGenerated the A-site profiles'
+    # print 'Done. Exiting...'
