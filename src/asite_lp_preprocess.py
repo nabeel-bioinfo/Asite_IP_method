@@ -4,7 +4,7 @@ from Bio import SeqIO
 import sys
 import subprocess
 import os
-
+import cPickle as Pickle
 
 def samparser_genome(sfile, frag_min, frag_max, three_prime=False):
     # Parse the SAM file and quantify mapped reads to chromosome positions.
@@ -41,6 +41,7 @@ def samparser_genome(sfile, frag_min, frag_max, three_prime=False):
                 read_length = len(fields[9])
 
                 if sam_flag in (0, 256):
+                    # Assuming no insertions and deletions
                     # If mapping by 3' end
                     if three_prime:
                         position = int(fields[3]) + read_length - 1
@@ -202,8 +203,8 @@ def samparser_transcriptome(sfile, frag_min, frag_max, three_prime=False):
     return dict_count, dict_mul_count, total_count
 
 
-def create_cds_table_transcriptome(idx_file, seq_file, output, sam_count_dict, dict_mul_count, total_count, frag_min, frag_max, three_prime=False, filter_file='', fast_mode=True):
-    outfile = open(output+'CDS_count_table', 'w')
+def create_cds_counts_transcriptome(idx_file, seq_file, output, sam_count_dict, dict_mul_count, total_count, frag_min, frag_max, three_prime=False, fast_mode=True):
+
     logfile = open(output+'makecdstable.log', 'w')
     frag_range = frag_max - frag_min + 1
     mul_gene_list = []
@@ -219,8 +220,8 @@ def create_cds_table_transcriptome(idx_file, seq_file, output, sam_count_dict, d
     with open(idx_file) as f:
         for lines in f:
             fields = lines.strip().split('\t')
-            # fields = [gene name, CDS start position, CDS length, Start codon, End codon]
-            idx_dict[fields[0]] = [int(fields[1]), int(fields[2]), fields[3], fields[4]]
+            # fields = [gene name, CDS start position, CDS length]
+            idx_dict[fields[0]] = [int(fields[1]), int(fields[2])]
 
     seq_dict = {}
 
@@ -228,27 +229,11 @@ def create_cds_table_transcriptome(idx_file, seq_file, output, sam_count_dict, d
         gene_id = str(seq_record.id).split(' ')[0]
         seq_dict[gene_id] = seq_record.seq
 
-    if filter_file:
-        filter_genes = True
-        select_genes = []
-        with open('/gpfs/group/epo2/default/nxa176/reference/Mus_musculus/single_isoform/mm10_start_index_single_isoforms.tab') as f:
-            for lines in f:
-                fields = lines.strip().split('\t')
-                gene = fields[0]
-                select_genes.append(gene)
-        canonical_genes = []
-        with open('/gpfs/group/epo2/default/nxa176/reference/Mus_musculus/Canonical_orfs_tables3_ingolia_mm10_included_missing_identifiers.txt') as f:
-            for lines in f:
-                canonical_genes.append(lines.strip())
-    else:
-        filter_genes = False
-
     dict_start = {}
-    # gene_count_file = open('Gene_counts_and_length.tab', 'w')
     print 'Starting to make the CDS table'
     for gene in sam_count_dict:
         try:
-            start_pos, cds_len = idx_dict[gene][:2]
+            start_pos, cds_len = idx_dict[gene]
         except KeyError:
             logfile.write('No index available for gene ' + gene + '\n')
             continue
@@ -283,7 +268,6 @@ def create_cds_table_transcriptome(idx_file, seq_file, output, sam_count_dict, d
             try:
                 multi_aligned = sam_count_dict[gene][pos][-1]
             except KeyError:
-                # print 'KeyError in multi aligned for gene ' + gene + ' at position ' + str(pos)
                 multi_aligned = 0
 
             try:
@@ -292,8 +276,6 @@ def create_cds_table_transcriptome(idx_file, seq_file, output, sam_count_dict, d
             except KeyError:
                 mul_count_list = [0] * frag_range
 
-            outfile.write(gene + '\t' + str(cds_pos) + '\t' + '\t'.join(map(str, ['X', cds_len, nuc, 'transcriptome', pos, multi_aligned, multi_genes, sum(count_list)] +
-                                                                            count_list)) + '\n')
             # We will create dictionaries with fragment length as keys and dict of gene with list of read counts at every position as our values
             for fsize in range(frag_min, frag_max + 1):
                 if gene not in dict_count_len[fsize]:
@@ -342,19 +324,15 @@ def create_cds_table_transcriptome(idx_file, seq_file, output, sam_count_dict, d
     for fsize in range(frag_min, frag_max + 1):
         count_file = open(output+'Read_counts_' + str(fsize) + '.tab', 'w')
         for gene, reads_list in dict_count_len[fsize].iteritems():
-            start_pos, cds_len = idx_dict[gene][:2]
+            start_pos, cds_len = idx_dict[gene]
             start_idx = dict_start[gene]
-            if filter_genes:
-                if gene in select_genes and gene in canonical_genes:
-                    count_file.write(gene + '\t' + str(start_idx) + '\t' + str(cds_len) + '\t' + ','.join(map(str, reads_list)) + '\n')
-            else:
-                count_file.write(gene + '\t' + str(start_idx) + '\t' + str(cds_len) + '\t' + ','.join(map(str, reads_list)) + '\n')
+            # Writing the read count for transcripts
+            count_file.write(gene + '\t' + str(start_idx) + '\t' + str(cds_len) + '\t' + ','.join(map(str, reads_list)) + '\n')
         count_file.close()
 
 
-def make_cds_table(annotation_file, genome, output, sam_parsed_count_dict, dict_mul_count, frag_min, frag_max, remove_overlapped_genes=True, three_prime=False, extra_overlap=0):
+def create_cds_counts_genome(annotation_file, genome, output, sam_parsed_count_dict, dict_mul_count, frag_min, frag_max, remove_overlapped_genes=True, three_prime=False, extra_overlap=0):
     # This module will take the count dictionary parsed from the sam file containing the read counts at each genomic position and map it to gene positions
-    outfile = open(output+'CDS_count_table', 'w')
 
     complimentarydict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
 
@@ -371,19 +349,13 @@ def make_cds_table(annotation_file, genome, output, sam_parsed_count_dict, dict_
     # For every gene in the dataset
     for gene_name in dict_cds_count:
         chr_num, strand = dict_gene[gene_name]
-        print gene_name, chr_num, strand
-        # Do not include genes which have overlapping annotations as the source of the reads will be ambiguous
-        if gene_name in overlap_genes:
-            multi_genes = 'Y'
-        else:
-            multi_genes = 'N'
         frag_range = frag_max - frag_min + 1
         try:
             gene_length = dict_len[gene_name]
         except KeyError:
             print dict_cds_info[gene_name]
             print dict_len[gene_name]
-            print 'KeyError in multicdslen for dict_cds_info in gene ' + str(gene_name)
+            print 'KeyError in length calculation for dict_cds_info in gene ' + str(gene_name)
 
         # dict_cds_info contains lists of CDS start and end positions as a list. For example if there are two exons for a gene X
         # dict_cds_info['X'] = [[111234, 111345],[112122,112543]]
@@ -454,10 +426,8 @@ def make_cds_table(annotation_file, genome, output, sam_parsed_count_dict, dict_
                         dict_count_len[fsize][gene_name] = []
                     dict_count_len[fsize][gene_name].append(strand_counts[fsize - frag_min])
 
-                outfile.write(gene_name + '\t' + str(current_pos) + '\t' + '\t'.join(map(str, [strand, gene_length, nuc, chr_num, pos,
-                                                                                               multi_mapped, multi_genes] + strand_counts)) + '\n')
-
                 if multi_mapped > 0:
+                    mul_mapped_reads = 0
                     # As done for actual counts, multiple mapped reads are counted according to fragment length
                     for fsize in range(frag_min, frag_max + 1):
                         if gene_name not in dict_mul_count_len:
@@ -476,6 +446,10 @@ def make_cds_table(annotation_file, genome, output, sam_parsed_count_dict, dict_
                             pos_range = range(-frag_max, gene_length)
                         if current_pos in pos_range:
                             dict_mul_count_len[gene_name][fsize][frame] += mul_strand_counts[fsize - frag_min]
+                            mul_mapped_reads += mul_strand_counts[fsize - frag_min]
+                    if mul_mapped_reads == 0:
+                        del dict_mul_count_len[gene_name]
+
                 if strand == '-':
                     gene_position_end += -1
                 if strand == '+':
@@ -483,8 +457,6 @@ def make_cds_table(annotation_file, genome, output, sam_parsed_count_dict, dict_
         counter += 1
         sys.stdout.write("Out of " + str(len(dict_cds_count)) + " transcripts, currently processing transcript {0}.\t\r".format(counter))
         sys.stdout.flush()
-
-    outfile.close()
 
     # Determine the percentage of reads which are multiple mapped to a gene and discard it if it is greater than the threshold set for multiple map filter.
     # This is done specific to each fragment size
@@ -599,7 +571,8 @@ def process_gff(gff):
     #     if dictcdscount[gene] > 1:
     #         intron_genes_file.write(gene + '\n')
     gff_file.close()
-    return cds_file
+    cds_file.close()
+    return cds_file.name
 
 
 def process_gff_ecoli(gff):
@@ -705,23 +678,27 @@ def cdsparser(annot_file, genome, extra_overlap=0):
             genomedict[name[1::]] = seq
     # Get the list of genes which have overlapping cds regions
     overlap_genes = find_overlapping_genes(dict_cds_info, dict_gene_info, extra_len=extra_overlap)
-    # print 'dictcdscount length ' + str(len(dict_cds_count))
+
     return dict_gene_info, dict_cds_count, dict_cds_info, genomedict, overlap_genes, dict_len
 
 
-# Find overlapping genes from a GFF annotation file
+# Find overlapping genes from a CDS dictionary of genes
 def find_overlapping_genes(dict_cds_info, dict_gene, extra_len=0):
     dict_search_overlap = {}
     dict_overlap = {}
+    overlap_list = []
+
     for gene_name in dict_cds_info:
         chrnum, strand = dict_gene[gene_name]
         # Left most position
         leftpos = int(dict_cds_info[gene_name][0][0])
         # Right most position
         rightpos = int(dict_cds_info[gene_name][-1][1])
+        # Comparing the boundaries of individual transcripts
         try:
             regions = dict_search_overlap[chrnum]
             for gene in regions:
+
                 if strand == gene[3]:
                     if leftpos - extra_len < gene[2] and rightpos + extra_len > gene[1]:
                         dict_overlap[gene[0]] = [chrnum, gene[1], gene[2], strand, gene_name, leftpos, rightpos, strand]
@@ -730,43 +707,156 @@ def find_overlapping_genes(dict_cds_info, dict_gene, extra_len=0):
         except KeyError:
             dict_search_overlap[chrnum] = [[gene_name, leftpos, rightpos, strand]]
 
-    # overlap_file = open('Overlap_genes', 'w')
-    overlap_list = []
     for gene, info in dict_overlap.iteritems():
-        # Write the overlapping genes to a file
-        # overlap_file.write(gene + '\t' + '\t'.join(map(str, info)) + '\n')
         overlap_list.append(gene)
     overlap_list.sort()
 
-    # overlap_file.close()
     return overlap_list
 
 
-def sort_cds_table(output, cds_table):
-    dict_gene = {}
-    dict_len = {}
-    with open(cds_table) as f:
-        for lines in f:
-            fields = lines.strip().split('\t')
-            gene = fields[0]
-            if gene not in dict_gene:
-                dict_gene[gene] = {}
-            pos = int(fields[1])
-            length = int(fields[3])
-            vals = fields[2:]
-            dict_gene[gene][pos] = vals
-            if gene not in dict_len:
-                dict_len[gene] = length
 
-    out_file = open(output+'CDS_count_table.tab', 'w')
-    for gene in sorted(dict_gene):
-        for pos in sorted(dict_gene[gene]):
-            out_file.write(gene + '\t' + str(pos) + '\t')
-            try:
-                out_file.write('\t'.join(map(str, dict_gene[gene][pos])) + '\n')
-            except TypeError:
-                print dict_gene[gene][pos]
-    subprocess.call('rm ' + cds_table, shell=True)
+def get_transcript_sequences(annotation_file, genome, output, extra_overlap=0):
+    # This module will take the count dictionary parsed from the sam file containing the read counts at each genomic position and map it to gene positions
+
+    complimentarydict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
+
+    dict_gene, dict_cds_count, dict_cds_info, genome_dict, overlap_genes, dict_len = cdsparser(annotation_file, genome, extra_overlap=extra_overlap)
+    print 'Parsed the annotation and genome files'
+    print 'Size of dict_Cds_Count dict is '+str(len(dict_cds_count))
+    print 'Size of genome dict'+str(len(genome_dict))
+    counter = 0
+    nuc_dict = {}
+    # For every gene in the dataset
+    for gene_name in dict_cds_count:
+        chr_num, strand = dict_gene[gene_name]
+        try:
+            gene_length = dict_len[gene_name]
+        except KeyError:
+            print dict_cds_info[gene_name]
+            print dict_len[gene_name]
+            print 'KeyError in multicdslen for dict_cds_info in gene ' + str(gene_name)
+        nuc_dict[gene_name] = []
+        # dict_cds_info contains lists of CDS start and end positions as a list. For example if there are two exons for a gene X
+        # dict_cds_info['X'] = [[111234, 111345],[112122,112543]]
+        # We get reads at 50 nt around the first cds position and the last cds position and update these lists
+        dict_cds_info[gene_name][0][0] -= 50
+        dict_cds_info[gene_name][-1][1] += 50
+        # Gene position index
+        gene_position_start = -50
+        # For -ve strand, this will be start of position as they go in opposite direction
+        gene_position_end = gene_length + 50
+        for k in dict_cds_info[gene_name]:
+            for pos in range(k[0], k[1] + 1):
+                if gene_position_start == 0:
+                    gene_position_start += 1
+                if gene_position_end == 0:
+                    gene_position_end += -1
+                try:
+                    nuc = genome_dict[chr_num][pos - 1]
+                except KeyError:
+                    print 'KEYERROR in genome dict for chromosome ' + str(chr_num)
+                    print 'Genome dict is ' + str(genome_dict.keys())
+                except IndexError:
+                    # A gene maybe present at the extreme end of chromosome (in E.coli) and hence 50 positions downstream will not be present
+                    nuc = 'N'
+
+                if strand == '-':
+                    # Since the strand is negative, we take the complement of the current nucleotide
+                    nuc = complimentarydict[nuc]
+                nuc_dict[gene_name].append(nuc)
+        print 'Got gene sequence for '+gene_name
+        counter += 1
+        sys.stdout.write("Out of " + str(len(dict_cds_count)) + " transcripts, currently processing transcript {0}.\t\r".format(counter))
+        sys.stdout.flush()
+
+        count_file = open(output+'Transcript_sequence.tab', 'w')
+        for gene in nuc_dict:
+            chr_num, strand = dict_gene[gene]
+            length = dict_len[gene]
+            if strand == '+':
+                sequence = nuc_dict[gene]
+            if strand == '-':
+                # For negative strand, read count were appended from the opposite end
+                sequence = reversed(nuc_dict[gene])
+            count_file.write(gene + '\t-50\t' + str(length) + '\t' + ''.join(map(str, sequence)) + '\n')
+        count_file.close()
+
+
+def generate_asite_profiles(frag_min, frag_max, offsets, infolder):
+    # Current support only for quantified read counts from 5' end. Offset from 3' end can be implemented.
+
+    dict_len = {}
+    read_count_dict = {}
+    # We parse the files for each fragment size which contain the read counts aligned by 5' end for CDS region along with a certain length before and beyond the CDS
+    for fsize in range(frag_min, frag_max + 1):
+        read_count_dict[fsize] = {}
+        with open(infolder+'Read_counts_' + str(fsize) + '.tab') as count_file:
+            for lines in count_file:
+                fields = lines.strip().split('\t')
+                gene = fields[0]
+                start_index, length = int(fields[1]), int(fields[2])
+                reads_list = map(int, fields[3].split(','))
+                dict_len[gene] = length
+                read_count_dict[fsize][gene] = {}
+                # We start by counting all the read counts listed from the starting index before the start position to similar length beyond stop position
+                for i in range(start_index, abs(start_index)+length):
+                    # Since there is no zero position, the listed value will shift directly from -1 to 1. So we need to add 1 here to properly index
+                    if i >= 0:
+                        try:
+                            read_count_dict[fsize][gene][i+1] = reads_list[i - start_index]
+                        except IndexError:
+                            print 'INDEX ERROR: length of read list '+str(len(reads_list))+'. Start index: '+str(start_index)+'. Length of gene '+str(length)
+                    else:
+                        read_count_dict[fsize][gene][i] = reads_list[i - start_index]
+    print 'Parsed the CDS read counts'
+
+    # Now we generate the A-site profiles according to offsets for specific fragment size and frames
+    asite_dict = {}
+    for fsize in range(frag_min, frag_max+1):
+        for gene in read_count_dict[fsize]:
+            if gene not in asite_dict:
+                asite_dict[gene] = {}
+            asite = []
+            for j in range(1, dict_len[gene]+1):
+                asite.append(0)
+            for pos in sorted(read_count_dict[fsize][gene]):
+                # First step is to get the frame of the nucleotide position. Have to careful before the start position
+                if pos > 0:
+                    frame = pos % 3 - 1  # 0 ,1 ,-1
+                if pos < 0:
+                    frame = (pos + 1) % 3 - 1  # 0,1,-1
+                # the frame 2 is where we get the value of -1
+                if frame == -1:
+                    frame = 2
+                try:
+                    offset = offsets[fsize][frame]['off']
+                # Fsize and frame combinations with ambigious offsets will be of type '15/18' and hence will give value error. They will made offset=0
+                except ValueError:
+                    offset = 0
+
+                if offset != 0:
+                    # Only those pos before 0 matter when offseted map to a position in CDS
+                    if pos < 0 <= pos+offset < len(asite):
+                        asite[pos+offset] += read_count_dict[fsize][gene][pos]
+                    elif pos > 0 and pos+offset-1 < len(asite):
+                        # -1 because the Asite profile is a list with index 0
+                        asite[pos+offset-1] += read_count_dict[fsize][gene][pos]
+            # This dictionary will store for every gene the A-site profiles for each fragment size
+            asite_dict[gene][fsize] = asite
+
+    # Output file for A-site profiles
+    asite_file = open('A-site_profiles.tab', 'w')
+    asite_table_dict = {}
+    for gene in asite_dict:
+        # This adds up the read count at every position from all fragment sizes for every gene
+        asite_profile = [sum(x) for x in zip(*asite_dict[gene].values())]
+        asite_table_dict[gene] = asite_profile
+        asite_file.write(gene + '\t' + str(dict_len[gene]) + '\t' + ','.join(map(str, asite_profile)) + '\n')
+
+    # Dumping a pickle object for easy import in downstream analyses
+    Pickle.dump(asite_table_dict, open('A-site_profiles.p', 'wb'))
+    asite_file.close()
+
 
 
 def parse_arguments():
@@ -803,6 +893,13 @@ def parse_arguments():
                       dest="overlap",
                       help="Overlapping genes are removed to avoid ambiguity in assignment of reads. This parameter is number of nucleotides beyond CDS region on both sides "
                            "to be avoid overlap. Default = 0")
+    parser.add_option("-s", "--asite",
+                      dest="get_asite",
+                      help="OPTIONAL: Yes if A-site ribosome profiles need to be generated. No (Default) if the purpose is to generate read counts by 5' end and apply LP algorithm")
+    parser.add_option("-p", "--profile",
+                      dest="asite_profile",
+                      help="OPTIONAL: Provide a file containing A-site offset table to convert read counts to actual A-site ribosome profiles for genes. This option is not required for applying LP "
+                           "algorithm and the offset table being used maybe an output from LP algorithm")
     (options, arg) = parser.parse_args()
     if not options.inputPath:
         parser.error("Requires an input file, the path of this script. Run with --help for help.")
@@ -833,12 +930,18 @@ if __name__ == "__main__":
         output_dir += '/'
     if not os.path.exists(output_dir+'output/'):
         os.makedirs(output_dir+'output/')
-        out = output_dir+'output/'
+    out = output_dir+'output/'
     SAM = arguments.inputPath
+
     # If the alignment format is BAM, then we first convert to SAM format. Requires samtools to be installed.
     if SAM.split('.')[-1] == 'bam':
-        subprocess.call('samtools view ' + SAM + ' > ' + SAM.split('.')[0] + '.sam', shell=True)
-        SAM = SAM.split('.')[0] + '.sam'
+        print 'Input is a BAM file. Using samtools to convert it to SAM file'
+        try:
+            subprocess.call('samtools view ' + SAM + ' > ' + SAM.split('.')[0] + '.sam', shell=True)
+            SAM = SAM.split('.')[0] + '.sam'
+        except Exception:
+            print 'samtools not running. Check installation. Exiting...'
+            sys.exit()
     elif SAM.split('.')[-1] == "sam":
         pass
     else:
@@ -860,14 +963,16 @@ if __name__ == "__main__":
         else:
             genome_loc = arguments.sequence
     else:
-        # Default alignment to an yeast sacCer3 genome
-        genome_loc = '../data_files/sacCer3/sacCer3_R64-2-1_genome.fa'
+        # Default alignment to an yeast sacCer3 genome.
+        print '\n[Warning]: No genome file location given. Hard coded yeast genome file location being used'
+        genome_loc = '/gpfs/group/epo2/default/nxa176/Asite_project/Code_testing/data_files/sacCer3/sacCer3_R64-2-1_genome.fa'
 
     if arguments.annotation_file:
         annotations = arguments.annotation_file
     else:
         # Default annotations of yeast sacCer3
-        annotations = '../data_files/sacCer3/sacCer3_R64-2-1_20150113.gff'
+        print '[Warning]: No annotation file location give. Hard coded yeast annotation file location being used'
+        annotations = '/gpfs/group/epo2/default/nxa176/Asite_project/Code_testing/data_files/sacCer3/Cds_info.tab'
     print 'Parsed all arguments'
     if transcriptome:
         print 'Entering transcriptome mode'
@@ -883,7 +988,7 @@ if __name__ == "__main__":
         elif 'ecoli' in annotations:
             parsed_gff = process_gff_ecoli(annotations)
         print 'Got annotation file from processing the GFF file'
-        annotations = parsed_gff.name
+        annotations = parsed_gff
         print 'Annotation file: ' + annotations
     else:
         print 'Annotation file: ' + annotations
@@ -901,17 +1006,32 @@ if __name__ == "__main__":
     else:
         overlap = 0
 
+    if arguments.get_asite == 'Yes':
+        get_asite = True
+    else:
+        get_asite = False
+
+    if arguments.asite_profile:
+        off_file = arguments.asite_profile
+    else:
+        # Hard-coded offset file for yeast. Provide file at command line for other organisms
+        off_file = '/gpfs/group/epo2/default/nxa176/Asite_project/Code_testing/data_files/sacCer3/A-site_LP_offset_table_yeast.tab'
+    # If the read counts have already been mapped, convert them to A-site profiles using the offset table generated using LP method
+    if get_asite and os.path.isfile(out+'Read_counts_'+str(max_frag)+'.tab'):
+        print 'Generating A-site profiles from already created CDS Read count files'
+        generate_asite_profiles(min_frag, max_frag, off_file, out)
+        print 'Generated the A-site profiles'
+        print 'Done. Exiting...'
+        sys.exit()
     if transcriptome:
         count_dict, mul_count_dict, total_dict = samparser_transcriptome(SAM, min_frag, max_frag)
-        print 'Parsed the SAM file aligned to the transcriptome. Starting to make CDS table'
-        create_cds_table_transcriptome(annotations, transcripts, out, count_dict, mul_count_dict, total_dict, min_frag, max_frag, filter_file='filter')
-        print 'Created CDS table. Sorting...'
-        sort_cds_table(out, out+'CDS_count_table')
-        print 'Done'
+        print '\nParsed the SAM file aligned to the transcriptome. Starting to quantify CDS read counts'
+        create_cds_counts_transcriptome(annotations, transcripts, out, count_dict, mul_count_dict, total_dict, min_frag, max_frag)
     else:
         count_dict, mul_count_dict = samparser_genome(SAM, min_frag, max_frag, three_prime=thr_prime)
-        print 'Parsed the SAM file. Starting to make CDS table'
-        make_cds_table(annotations, genome_loc, out, count_dict, mul_count_dict, min_frag, max_frag, three_prime=thr_prime, extra_overlap=overlap)
-        print 'Created CDS table. Sorting...'
-        sort_cds_table(out, out+'CDS_count_table')
-        print 'Done'
+        print '\nParsed the SAM file. Starting to quantify CDS read counts'
+        create_cds_counts_genome(annotations, genome_loc, out, count_dict, mul_count_dict, min_frag, max_frag, three_prime=thr_prime, extra_overlap=overlap)
+
+    if get_asite:
+        generate_asite_profiles(min_frag, max_frag, off_file, out)
+    print '\nDone'
