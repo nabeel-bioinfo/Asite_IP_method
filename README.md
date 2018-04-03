@@ -45,7 +45,8 @@ Additional input parameters are shown below
 The following output files will be written in the new directory called ‘output’
 -	Read count files for each fragment size between minimum and maximum fragment length
 -	Multiple mapped read counts. This file has to be used as input in Step 2
--	CDS table. This file will be used for creating an A-site table and run downstream analyses.
+
+There is option for generating the A-site read density profiles by providing a file containing offset table generated from result of LP algorithm. This is provided for those users who are using this script to parse their alignment file and directly generate the A-site profiles. The input offset file should contain offsets in rows of different fragment sizes and columns in frame 0,1 and 2. The first column should be fragment size.
 
 ### Option B: Alignment to transcriptome
 This option is preferable for complex genomes like mouse and human. The alignment file contains reads directly aligned to gene transcripts. The following input files are required to run Step 1 in the transcriptome mode.
