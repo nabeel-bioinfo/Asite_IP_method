@@ -1,11 +1,11 @@
-# Asite_LP_method
-The following text describes the process to run the Linear Programming method to identify the A-site positions within ribosome protected fragments. 
+# Asite_IP_method
+The following text describes the process to run the Integer Programming method to identify the A-site positions within ribosome protected fragments. 
 
 The analysis is carried out in two steps. 
 
 **Step 1:** An alignment file is processed to create read count files according to fragment length. These files will be used in Step 2 to run the Linear Programming algorithm. Genes are selected based on filtering criteria specified by the user.
 
-**Step 2:** Using the read count files created in Step 1, Linear Programming algorithm is run and the output is a A-site offset table specific to fragment size and frame. 
+**Step 2:** Using the read count files created in Step 1, Integer Programming algorithm is run and the output is a A-site offset table specific to fragment size and frame. 
 
 ### Step 1:  
 There are two options to run Step 1 based on how the alignments have been made.
@@ -72,7 +72,7 @@ python src/asite_lp_preprocess.py -g data_files/mm10/mm10_start_index.tab -e dat
 
 ### Step 2:
 
-The Read count files created under the directory `output/ ` will be used as input for Step2 where we will run the Linear Programming algorithm to determine fragment size and frame specific offsets for A-site within the ribosome protected fragments. This step is general to any organism and depends on the output created from Step 1.  
+The Read count files created under the directory `output/ ` will be used as input for Step2 where we will run the Integer Programming algorithm to determine fragment size and frame specific offsets for A-site within the ribosome protected fragments. This step is general to any organism and depends on the output created from Step 1.  
 An example for running this step is shown below
 
 ```
@@ -92,6 +92,6 @@ The parameters which can be given as an input to this step are
 
 The output files created from Step 2 are
 
--	**Results_LP_algorithm.tab:**  This file contains the optimum offset table for A-site positions within ribosome protected fragments according to fragment size and frame. This file also contains  percentage of genes for unique offsets and top two percentages for combinations having ambiguous offsets.  The file also contains number of genes and number of reads mapped to each fragment size and frame.
+-	**Results_IP_algorithm.tab:**  This file contains the optimum offset table for A-site positions within ribosome protected fragments according to fragment size and frame. This file also contains  percentage of genes for unique offsets and top two percentages for combinations having ambiguous offsets.  The file also contains number of genes and number of reads mapped to each fragment size and frame.
 -	 **Percentage_of_genes.tab:** This file contains the percentage of genes mapping to each offset between 0 and S which are multiple of 3. This information is written for each fragment length as well as for each frame within each fragment length.
 
