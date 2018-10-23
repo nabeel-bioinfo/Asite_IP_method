@@ -895,11 +895,11 @@ def parse_arguments():
                            "to be avoid overlap. Default = 0")
     parser.add_option("-s", "--asite",
                       dest="get_asite",
-                      help="OPTIONAL: Yes if A-site ribosome profiles need to be generated. No (Default) if the purpose is to generate read counts by 5' end and apply LP algorithm")
+                      help="OPTIONAL: Yes if A-site ribosome profiles need to be generated. No (Default) if the purpose is to generate read counts by 5' end and apply IP algorithm")
     parser.add_option("-p", "--profile",
                       dest="asite_profile",
-                      help="OPTIONAL: Provide a file containing A-site offset table to convert read counts to actual A-site ribosome profiles for genes. This option is not required for applying LP "
-                           "algorithm and the offset table being used maybe an output from LP algorithm")
+                      help="OPTIONAL: Provide a file containing A-site offset table to convert read counts to actual A-site ribosome profiles for genes. This option is not required for applying IP "
+                           "algorithm and the offset table being used maybe an output from IP algorithm")
     (options, arg) = parser.parse_args()
     if not options.inputPath:
         parser.error("Requires an input file, the path of this script. Run with --help for help.")
