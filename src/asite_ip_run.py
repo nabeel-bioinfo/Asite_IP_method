@@ -108,7 +108,7 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
     good_genes = {}
     good_genes_mul_map = {}
 
-    # If the LP algorithm has to be applied for a selected subset of genes, they must be loaded from a text file here. If include option is false, these genes will be excluded
+    # If the IP algorithm has to be applied for a selected subset of genes, they must be loaded from a text file here. If include option is false, these genes will be excluded
     if filter_file:
         filter_genes = True
         select_genes = []
@@ -118,9 +118,9 @@ def select_high_cov_genes(cds_folder, mul_map_file, frag_min, frag_max, output, 
                 gene = fields[0]
                 select_genes.append(gene)
         if include:
-            print 'Using gene list from file ' + filter_file + ' to apply the LP algorithm only for these ' + str(len(select_genes))+' genes'
+            print 'Using gene list from file ' + filter_file + ' to apply the IP algorithm only for these ' + str(len(select_genes))+' genes'
         else:
-            print 'Excluding '+str(len(select_genes))+' genes from the application of LP algorithm as provided in the file '+filter_file
+            print 'Excluding '+str(len(select_genes))+' genes from the application of IP algorithm as provided in the file '+filter_file
     else:
         filter_genes = False
 
@@ -243,7 +243,7 @@ def asite_algorithm_improved_second_offset_correction(reads_dict, dict_len, frag
     for frame in xrange(3):
         details[frame] = {}
         debug_details[frame] = {}
-    log_file = open(output + 'asite_lp.log', 'w')
+    log_file = open(output + 'asite_ip.log', 'w')
 
     # The following dict will contain meta gene for every gene in every fsize and frame. The meta-data include no. of zeros, perc zeros, avg, avg at start and avg at end
     sum_total = {}
@@ -591,7 +591,7 @@ def asite_algorithm_improved_second_offset_correction(reads_dict, dict_len, frag
     """
     ***    WRITE THE RESULTS AND PLOT DISTRIBUTION OF OFFSETS ***
     """
-    outfile = open(output + "Results_LP_algorithm.tab", "w")
+    outfile = open(output + "Results_IP_algorithm.tab", "w")
     perc_file = open(output + "Perc_of_genes_for_all_offsets.tab", "w")
 
     outfile.write('\n\nMost probable Offsets for Fragment Size and Frame (including coverage data)\n')
