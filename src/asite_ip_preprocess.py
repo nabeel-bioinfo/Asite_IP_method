@@ -965,14 +965,14 @@ if __name__ == "__main__":
     else:
         # Default alignment to an yeast sacCer3 genome.
         print '\n[Warning]: No genome file location given. Hard coded yeast genome file location being used'
-        genome_loc = '/gpfs/group/epo2/default/nxa176/Asite_project/Code_testing/data_files/sacCer3/sacCer3_R64-2-1_genome.fa'
+        genome_loc = '../data_files/sacCer3/sacCer3_R64-2-1_genome.fa'
 
     if arguments.annotation_file:
         annotations = arguments.annotation_file
     else:
         # Default annotations of yeast sacCer3
         print '[Warning]: No annotation file location give. Hard coded yeast annotation file location being used'
-        annotations = '/gpfs/group/epo2/default/nxa176/Asite_project/Code_testing/data_files/sacCer3/Cds_info.tab'
+        annotations = '../data_files/sacCer3/Cds_info.tab'
     print 'Parsed all arguments'
     if transcriptome:
         print 'Entering transcriptome mode'
@@ -1015,7 +1015,7 @@ if __name__ == "__main__":
         off_file = arguments.asite_profile
     else:
         # Hard-coded offset file for yeast. Provide file at command line for other organisms
-        off_file = '/gpfs/group/epo2/default/nxa176/Asite_project/Code_testing/data_files/sacCer3/A-site_LP_offset_table_yeast.tab'
+        off_file = '../data_files/sacCer3/A-site_LP_offset_table_yeast.tab'
     # If the read counts have already been mapped, convert them to A-site profiles using the offset table generated using LP method
     if get_asite and os.path.isfile(out+'Read_counts_'+str(max_frag)+'.tab'):
         print 'Generating A-site profiles from already created CDS Read count files'
