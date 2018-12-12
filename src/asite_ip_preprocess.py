@@ -783,6 +783,12 @@ def get_transcript_sequences(annotation_file, genome, output, extra_overlap=0):
 
 
 def generate_asite_profiles(frag_min, frag_max, offsets, infolder):
+    offsets = {}
+    with open(offfile) as f:
+        for lines in f:
+            fields = lines.strip().split('\t')
+            offsets[int(fields[0])] = {0:fields[1], 1:fields[2],2:fields[3]}
+
     # Current support only for quantified read counts from 5' end. Offset from 3' end can be implemented.
 
     dict_len = {}
@@ -829,9 +835,12 @@ def generate_asite_profiles(frag_min, frag_max, offsets, infolder):
                 if frame == -1:
                     frame = 2
                 try:
-                    offset = offsets[fsize][frame]['off']
+                    offset = int(offsets[fsize][frame])
                 # Fsize and frame combinations with ambigious offsets will be of type '15/18' and hence will give value error. They will made offset=0
                 except ValueError:
+                    offset = 0
+                except IndexError:
+                    print 'IndexError for fsize '+str(fsize)+' and frame '+str(frame)+' and offsets are '+str(offsets)
                     offset = 0
 
                 if offset != 0:
@@ -856,7 +865,6 @@ def generate_asite_profiles(frag_min, frag_max, offsets, infolder):
     # Dumping a pickle object for easy import in downstream analyses
     Pickle.dump(asite_table_dict, open('A-site_profiles.p', 'wb'))
     asite_file.close()
-
 
 
 def parse_arguments():
