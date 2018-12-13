@@ -782,7 +782,7 @@ def get_transcript_sequences(annotation_file, genome, output, extra_overlap=0):
         count_file.close()
 
 
-def generate_asite_profiles(frag_min, frag_max, offsets, infolder):
+def generate_asite_profiles(frag_min, frag_max, offfile, infolder):
     offsets = {}
     with open(offfile) as f:
         for lines in f:
